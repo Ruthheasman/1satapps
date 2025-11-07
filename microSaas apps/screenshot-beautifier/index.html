@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshot Beautifier - $0.20</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        .price {
+            color: #667eea;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .tagline {
+            color: #666;
+            font-size: 14px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+        .controls {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+        .control-group {
+            margin-bottom: 25px;
+        }
+        .control-group h3 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+        .upload-area.dragover {
+            background: #f0f0ff;
+            border-color: #764ba2;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .chrome-options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .chrome-option {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 13px;
+            background: white;
+        }
+        .chrome-option:hover {
+            border-color: #667eea;
+        }
+        .chrome-option.active {
+            border-color: #667eea;
+            background: #f8f9ff;
+            font-weight: 600;
+        }
+        .gradient-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .gradient-option {
+            height: 50px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .gradient-option:hover {
+            transform: scale(1.05);
+        }
+        .gradient-option.active {
+            border-color: white;
+            box-shadow: 0 0 0 2px #667eea;
+        }
+        .slider-group {
+            margin-bottom: 15px;
+        }
+        .slider-group label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+        .slider-value {
+            float: right;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .canvas-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #preview {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+            font-size: 13px;
+        }
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Screenshot Beautifier</h1>
+            <div class="price">$0.20 per screenshot</div>
+            <p class="tagline">Make your screenshots pop with browser chrome, gradients, and shadows. Instant and beautiful.</p>
+        </div>
+
+        <div class="main-content">
+            <div class="controls">
+                <div class="control-group">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📸</div>
+                        <p><strong>Upload Screenshot</strong></p>
+                        <p style="font-size: 11px; color: #999; margin-top: 8px;">PNG, JPG (Max 10MB)</p>
+                        <input type="file" id="fileInput" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Browser Chrome</h3>
+                    <div class="chrome-options">
+                        <div class="chrome-option active" data-chrome="macos">macOS Window</div>
+                        <div class="chrome-option" data-chrome="chrome">Chrome Browser</div>
+                        <div class="chrome-option" data-chrome="minimal">Minimal Bar</div>
+                        <div class="chrome-option" data-chrome="none">No Chrome</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Background Gradient</h3>
+                    <div class="gradient-options">
+                        <div class="gradient-option active" data-gradient="0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"></div>
+                        <div class="gradient-option" data-gradient="1" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"></div>
+                        <div class="gradient-option" data-gradient="2" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"></div>
+                        <div class="gradient-option" data-gradient="3" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"></div>
+                        <div class="gradient-option" data-gradient="4" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)"></div>
+                        <div class="gradient-option" data-gradient="5" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%)"></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Customization</h3>
+                    <div class="slider-group">
+                        <label>
+                            Shadow Blur
+                            <span class="slider-value" id="shadowValue">40</span>
+                        </label>
+                        <input type="range" id="shadowBlur" min="0" max="100" value="40">
+                    </div>
+                    <div class="slider-group">
+                        <label>
+                            Padding
+                            <span class="slider-value" id="paddingValue">80</span>
+                        </label>
+                        <input type="range" id="padding" min="20" max="200" value="80">
+                    </div>
+                    <div class="slider-group">
+                        <label>
+                            Corner Radius
+                            <span class="slider-value" id="radiusValue">10</span>
+                        </label>
+                        <input type="range" id="cornerRadius" min="0" max="30" value="10">
+                    </div>
+                </div>
+
+                <button class="btn" id="downloadBtn" disabled>Download - $0.20</button>
+                <div class="success" id="success">Downloading...</div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="preview"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('preview');
+        const ctx = canvas.getContext('2d');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const success = document.getElementById('success');
+
+        let uploadedImage = null;
+        let settings = {
+            chrome: 'macos',
+            gradient: 0,
+            shadowBlur: 40,
+            padding: 80,
+            cornerRadius: 10
+        };
+
+        const gradients = [
+            ['#667eea', '#764ba2'],
+            ['#f093fb', '#f5576c'],
+            ['#4facfe', '#00f2fe'],
+            ['#43e97b', '#38f9d7'],
+            ['#fa709a', '#fee140'],
+            ['#30cfd0', '#330867']
+        ];
+
+        // Upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        function handleFile(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedImage = img;
+                    downloadBtn.disabled = false;
+                    renderPreview();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Chrome options
+        document.querySelectorAll('.chrome-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.chrome-option').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+                settings.chrome = option.dataset.chrome;
+                renderPreview();
+            });
+        });
+
+        // Gradient options
+        document.querySelectorAll('.gradient-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.gradient-option').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+                settings.gradient = parseInt(option.dataset.gradient);
+                renderPreview();
+            });
+        });
+
+        // Sliders
+        document.getElementById('shadowBlur').addEventListener('input', (e) => {
+            settings.shadowBlur = parseInt(e.target.value);
+            document.getElementById('shadowValue').textContent = e.target.value;
+            renderPreview();
+        });
+
+        document.getElementById('padding').addEventListener('input', (e) => {
+            settings.padding = parseInt(e.target.value);
+            document.getElementById('paddingValue').textContent = e.target.value;
+            renderPreview();
+        });
+
+        document.getElementById('cornerRadius').addEventListener('input', (e) => {
+            settings.cornerRadius = parseInt(e.target.value);
+            document.getElementById('radiusValue').textContent = e.target.value;
+            renderPreview();
+        });
+
+        function renderPreview() {
+            if (!uploadedImage) return;
+
+            const chromeHeight = settings.chrome === 'none' ? 0 :
+                                settings.chrome === 'minimal' ? 30 : 40;
+
+            const maxWidth = 1000;
+            const scale = uploadedImage.width > maxWidth ? maxWidth / uploadedImage.width : 1;
+
+            const imgWidth = uploadedImage.width * scale;
+            const imgHeight = uploadedImage.height * scale;
+
+            canvas.width = imgWidth + (settings.padding * 2);
+            canvas.height = imgHeight + chromeHeight + (settings.padding * 2);
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, gradients[settings.gradient][0]);
+            gradient.addColorStop(1, gradients[settings.gradient][1]);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = settings.shadowBlur;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = settings.shadowBlur / 2;
+
+            // Window background
+            const windowX = settings.padding;
+            const windowY = settings.padding;
+            const windowWidth = imgWidth;
+            const windowHeight = imgHeight + chromeHeight;
+
+            ctx.fillStyle = '#ffffff';
+            roundRect(ctx, windowX, windowY, windowWidth, windowHeight, settings.cornerRadius);
+            ctx.fill();
+
+            // Reset shadow for chrome
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // Draw chrome
+            if (settings.chrome !== 'none') {
+                drawChrome(windowX, windowY, windowWidth, chromeHeight);
+            }
+
+            // Draw screenshot
+            ctx.drawImage(
+                uploadedImage,
+                windowX,
+                windowY + chromeHeight,
+                imgWidth,
+                imgHeight
+            );
+        }
+
+        function drawChrome(x, y, width, height) {
+            if (settings.chrome === 'macos') {
+                // macOS style
+                ctx.fillStyle = '#e8e8e8';
+                roundRect(ctx, x, y, width, height, settings.cornerRadius, true, false);
+                ctx.fill();
+
+                // Traffic lights
+                const buttonY = y + height / 2;
+                const buttonRadius = 6;
+                const buttonSpacing = 20;
+                const startX = x + 15;
+
+                // Red
+                ctx.fillStyle = '#ff5f56';
+                ctx.beginPath();
+                ctx.arc(startX, buttonY, buttonRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Yellow
+                ctx.fillStyle = '#ffbd2e';
+                ctx.beginPath();
+                ctx.arc(startX + buttonSpacing, buttonY, buttonRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Green
+                ctx.fillStyle = '#27c93f';
+                ctx.beginPath();
+                ctx.arc(startX + buttonSpacing * 2, buttonY, buttonRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (settings.chrome === 'chrome') {
+                // Chrome style
+                ctx.fillStyle = '#f1f3f4';
+                roundRect(ctx, x, y, width, height, settings.cornerRadius, true, false);
+                ctx.fill();
+
+                // Tab
+                const tabWidth = 180;
+                const tabHeight = height - 5;
+                ctx.fillStyle = '#ffffff';
+                roundRect(ctx, x + 10, y + 5, tabWidth, tabHeight, 8, true, false);
+                ctx.fill();
+
+                // Dots menu
+                const dotX = x + width - 30;
+                const dotY = y + height / 2;
+                ctx.fillStyle = '#5f6368';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc(dotX + i * 6, dotY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+            } else if (settings.chrome === 'minimal') {
+                // Minimal bar
+                ctx.fillStyle = '#f8f8f8';
+                roundRect(ctx, x, y, width, height, settings.cornerRadius, true, false);
+                ctx.fill();
+
+                // Three dots
+                const dotY = y + height / 2;
+                const startX = x + 15;
+                ctx.fillStyle = '#999999';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc(startX + i * 10, dotY, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        function roundRect(ctx, x, y, width, height, radius, top = true, bottom = true) {
+            ctx.beginPath();
+            if (top) {
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.arcTo(x + width, y, x + width, y + radius, radius);
+            } else {
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + width, y);
+            }
+
+            if (bottom) {
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+                ctx.lineTo(x + radius, y + height);
+                ctx.arcTo(x, y + height, x, y + height - radius, radius);
+            } else {
+                ctx.lineTo(x + width, y + height);
+                ctx.lineTo(x, y + height);
+            }
+
+            ctx.lineTo(x, y + radius);
+            if (top) {
+                ctx.arcTo(x, y, x + radius, y, radius);
+            }
+            ctx.closePath();
+        }
+
+        // Download
+        downloadBtn.addEventListener('click', () => {
+            // In production, integrate Stripe payment here
+
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `beautified-screenshot-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                success.style.display = 'block';
+                setTimeout(() => {
+                    success.style.display = 'none';
+                }, 2000);
+            }, 'image/png', 1.0);
+        });
+    </script>
+</body>
+</html>
