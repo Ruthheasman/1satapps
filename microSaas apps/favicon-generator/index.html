@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Favicon Generator - $0.50</title>
+    <title>Favicon Generator - Pay with BSV</title>
+    <script src="../shared/bsv-wallet.js"></script>
     <style>
         * {
             margin: 0;
@@ -145,13 +146,133 @@
             font-weight: bold;
             margin-right: 8px;
         }
+        .wallet-section {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #667eea;
+        }
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .wallet-status-text {
+            font-size: 14px;
+            color: #666;
+        }
+        .wallet-address {
+            font-family: monospace;
+            font-size: 12px;
+            color: #667eea;
+            background: white;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+        .btn-wallet {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-wallet:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-wallet:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .wallet-icon {
+            font-size: 20px;
+            margin-right: 8px;
+        }
+        .connected {
+            color: #10b981;
+            font-weight: bold;
+        }
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+        .install-wallet {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .install-wallet a {
+            color: #667eea;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .install-wallet a:hover {
+            text-decoration: underline;
+        }
+        .payment-info {
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .payment-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #059669;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Favicon Generator</h1>
-        <div class="price">$0.50 per generation</div>
+        <div class="price">Pay with BSV</div>
         <p class="tagline">Upload your logo and get all favicon sizes instantly. Save 15 minutes of tedious work!</p>
+
+        <!-- Wallet Connection Section -->
+        <div class="install-wallet" id="installWallet" style="display: none;">
+            <strong>⚠ BRC100-compliant wallet not detected</strong><br>
+            Please install <a href="https://chromewebstore.google.com/detail/yours-wallet/mlbnicldlpdimbjdcncnklfempedeipj" target="_blank">Yours Wallet</a> or <a href="https://pandawallet.pro" target="_blank">Panda Wallet</a> to continue.
+        </div>
+
+        <div class="wallet-section" id="walletSection">
+            <div class="wallet-status">
+                <div>
+                    <div class="wallet-status-text" id="walletStatusText">
+                        <span class="wallet-icon">👛</span>
+                        <span id="statusText">Not connected</span>
+                    </div>
+                    <div class="wallet-address" id="walletAddress" style="display: none;"></div>
+                </div>
+                <button class="btn-wallet" id="connectWalletBtn">Connect Wallet</button>
+            </div>
+            <div class="error" id="walletError"></div>
+        </div>
+
+        <div class="payment-info" id="paymentInfo" style="display: none;">
+            <div>Payment Required:</div>
+            <div class="payment-amount">~1,000,000 satoshis ($0.50 USD)</div>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">Actual amount may vary based on current BSV price</div>
+        </div>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
@@ -183,7 +304,7 @@
             <div class="size-box">512×512</div>
         </div>
 
-        <button class="btn" id="generateBtn" disabled>Generate Favicons - $0.50</button>
+        <button class="btn" id="generateBtn" disabled>Pay & Generate Favicons</button>
 
         <div class="success" id="success">
             Favicons generated successfully! Download starting...
@@ -200,8 +321,69 @@
         const success = document.getElementById('success');
         const sizesDiv = document.getElementById('sizes');
 
+        // Wallet elements
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const walletStatusText = document.getElementById('statusText');
+        const walletAddress = document.getElementById('walletAddress');
+        const walletError = document.getElementById('walletError');
+        const installWallet = document.getElementById('installWallet');
+        const walletSection = document.getElementById('walletSection');
+        const paymentInfo = document.getElementById('paymentInfo');
+
+        // Payment configuration
+        const PAYMENT_ADDRESS = '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa'; // Replace with your BSV address
+        const PRICE_USD = 0.50;
+        const BSV_PRICE_USD = 50; // Update with current BSV price or fetch from API
+
         let selectedFile = null;
+        let bsvWallet = null;
+        let walletConnected = false;
         const sizes = [16, 32, 64, 128, 256, 512];
+
+        // Initialize BSV Wallet
+        async function initWallet() {
+            bsvWallet = new BSVWallet();
+
+            // Check if wallet is installed
+            if (!bsvWallet.isWalletInstalled()) {
+                installWallet.style.display = 'block';
+                walletSection.style.display = 'none';
+                return;
+            }
+
+            // Set up wallet connection button
+            connectWalletBtn.addEventListener('click', async () => {
+                try {
+                    connectWalletBtn.disabled = true;
+                    connectWalletBtn.textContent = 'Connecting...';
+                    walletError.style.display = 'none';
+
+                    const result = await bsvWallet.connect();
+
+                    walletConnected = true;
+                    walletStatusText.innerHTML = `<span class="wallet-icon">👛</span><span class="connected">Connected (${result.walletType})</span>`;
+                    walletAddress.textContent = result.address;
+                    walletAddress.style.display = 'block';
+                    connectWalletBtn.textContent = 'Connected ✓';
+                    connectWalletBtn.disabled = true;
+                    paymentInfo.style.display = 'block';
+
+                    // Enable generate button if file is selected
+                    if (selectedFile) {
+                        generateBtn.disabled = false;
+                    }
+
+                } catch (error) {
+                    walletError.textContent = error.message;
+                    walletError.style.display = 'block';
+                    connectWalletBtn.textContent = 'Connect Wallet';
+                    connectWalletBtn.disabled = false;
+                }
+            });
+        }
+
+        // Initialize wallet on page load
+        window.addEventListener('DOMContentLoaded', initWallet);
 
         // Upload area click
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -246,7 +428,13 @@
                 previewImg.src = e.target.result;
                 preview.style.display = 'block';
                 sizesDiv.style.display = 'grid';
-                generateBtn.disabled = false;
+
+                // Enable generate button only if wallet is connected
+                if (walletConnected) {
+                    generateBtn.disabled = false;
+                } else {
+                    generateBtn.disabled = true;
+                }
             };
 
             reader.readAsDataURL(file);
@@ -255,14 +443,31 @@
         // Generate favicons
         generateBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
-
-            // In production, you'd integrate Stripe payment here
-            // For demo purposes, we'll proceed directly to generation
+            if (!walletConnected) {
+                alert('Please connect your wallet first');
+                return;
+            }
 
             generateBtn.disabled = true;
-            generateBtn.textContent = 'Generating...';
+            generateBtn.textContent = 'Processing Payment...';
+            walletError.style.display = 'none';
 
             try {
+                // Calculate payment amount in satoshis
+                const amountSatoshis = bsvWallet.usdToSatoshis(PRICE_USD, BSV_PRICE_USD);
+
+                // Request payment
+                const paymentResult = await bsvWallet.sendPayment({
+                    to: PAYMENT_ADDRESS,
+                    amount: amountSatoshis,
+                    description: 'Favicon Generator - 6 sizes + manifest.json'
+                });
+
+                console.log('Payment successful:', paymentResult.txid);
+
+                // Payment successful, proceed with generation
+                generateBtn.textContent = 'Generating...';
+
                 const zip = new JSZip();
                 const img = new Image();
 
@@ -348,16 +553,26 @@ Generated by Favicon Generator
                 URL.revokeObjectURL(url);
 
                 // Show success
+                success.innerHTML = `✓ Payment confirmed! (TX: ${paymentResult.txid.substring(0, 10)}...)<br>Favicons generated successfully! Download starting...`;
                 success.style.display = 'block';
                 setTimeout(() => {
                     success.style.display = 'none';
-                    generateBtn.textContent = 'Generate Another - $0.50';
+                    generateBtn.textContent = 'Pay & Generate Another';
                     generateBtn.disabled = false;
-                }, 3000);
+                }, 5000);
 
             } catch (error) {
-                alert('Error generating favicons. Please try again.');
-                generateBtn.textContent = 'Generate Favicons - $0.50';
+                console.error('Error:', error);
+
+                // Check if it's a payment error or generation error
+                if (error.message.includes('Payment failed') || error.message.includes('User rejected')) {
+                    walletError.textContent = `Payment failed: ${error.message}`;
+                    walletError.style.display = 'block';
+                } else {
+                    alert('Error generating favicons. Please try again.');
+                }
+
+                generateBtn.textContent = 'Pay & Generate Favicons';
                 generateBtn.disabled = false;
             }
         });
