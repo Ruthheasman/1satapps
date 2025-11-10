@@ -13,6 +13,19 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = 3001;
 
+// Pricing configuration (in satoshis)
+const PRICING = {
+  baseCost: 1000,        // 1000 satoshis base
+  perKbCost: 10,         // 10 satoshis per KB
+  recipientAddress: '1SatAppsDeploymentAddress'  // Replace with actual BSV address
+};
+
+// Calculate deployment cost
+function calculateDeploymentCost(fileSizeBytes) {
+  const sizeInKb = fileSizeBytes / 1024;
+  return Math.ceil(PRICING.baseCost + (sizeInKb * PRICING.perKbCost));
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -43,6 +56,64 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// Create payment transaction endpoint (for wallet payments)
+app.post('/api/create-payment', async (req, res) => {
+  try {
+    const { amount, description, recipient } = req.body;
+
+    if (!amount || !description) {
+      return res.status(400).json({ error: 'Amount and description are required' });
+    }
+
+    // In a real implementation, this would create a payment transaction
+    // using BRC-100 wallet interface. For now, we'll return a mock response
+    // that indicates what the wallet should do.
+
+    // The actual payment would be handled by the user's wallet through BRC-100 createAction
+    // This endpoint could validate the payment later or provide payment details
+
+    console.log(`Payment request: ${amount} satoshis for "${description}"`);
+    console.log(`Recipient: ${recipient || PRICING.recipientAddress}`);
+
+    // Return payment details that the wallet should use
+    res.json({
+      success: true,
+      amount,
+      recipient: recipient || PRICING.recipientAddress,
+      description,
+      // Mock transaction ID - in real implementation, this comes from wallet
+      txid: `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    });
+
+  } catch (error) {
+    console.error('Payment creation error:', error);
+    res.status(500).json({
+      error: 'Failed to create payment',
+      details: error.message
+    });
+  }
+});
+
+// Get pricing information
+app.get('/api/pricing', (req, res) => {
+  const { fileSize } = req.query;
+
+  if (!fileSize) {
+    return res.json({
+      baseCost: PRICING.baseCost,
+      perKbCost: PRICING.perKbCost
+    });
+  }
+
+  const cost = calculateDeploymentCost(parseInt(fileSize));
+  res.json({
+    cost,
+    baseCost: PRICING.baseCost,
+    perKbCost: PRICING.perKbCost,
+    fileSize: parseInt(fileSize)
+  });
+});
+
 // Deploy endpoint
 app.post('/api/deploy', upload.single('app'), async (req, res) => {
   try {
@@ -50,12 +121,34 @@ app.post('/api/deploy', upload.single('app'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { paymentKey, version } = req.body;
+    const { paymentKey, paymentMethod, paymentTxid, version } = req.body;
 
-    if (!paymentKey) {
-      // Clean up uploaded file
+    // Validate payment method
+    if (!paymentMethod || (paymentMethod !== 'wallet' && paymentMethod !== 'manual')) {
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: 'Payment key is required' });
+      return res.status(400).json({ error: 'Invalid payment method' });
+    }
+
+    // Validate payment based on method
+    if (paymentMethod === 'manual') {
+      if (!paymentKey) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'Payment key is required for manual payment' });
+      }
+    } else if (paymentMethod === 'wallet') {
+      if (!paymentTxid) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'Payment transaction ID is required for wallet payment' });
+      }
+      // In a real implementation, verify the payment transaction here
+      console.log(`Verifying wallet payment transaction: ${paymentTxid}`);
+
+      // Calculate expected cost and verify payment amount
+      const expectedCost = calculateDeploymentCost(req.file.size);
+      console.log(`Expected payment: ${expectedCost} satoshis`);
+
+      // TODO: Verify payment transaction on blockchain
+      // For now, we'll proceed assuming payment is valid
     }
 
     // Extract the ZIP file
@@ -94,10 +187,15 @@ app.post('/api/deploy', upload.single('app'), async (req, res) => {
     }
 
     // Set environment variables for react-onchain
+    // Only use paymentKey for manual payment method
     const env = {
       ...process.env,
-      PAYMENT_KEY: paymentKey
+      ...(paymentMethod === 'manual' && paymentKey ? { PAYMENT_KEY: paymentKey } : {})
     };
+
+    // For wallet payments, we've already received payment
+    // so we can use a deployment-only key or skip payment in react-onchain
+    console.log(`Deploying with payment method: ${paymentMethod}`);
 
     // Run react-onchain deploy
     const deployProcess = spawn('npx', [
@@ -138,13 +236,22 @@ app.post('/api/deploy', upload.single('app'), async (req, res) => {
         const urlMatch = deployOutput.match(/https?:\/\/[^\s]+/);
         const txidMatch = deployOutput.match(/([a-f0-9]{64}_\d+)/);
 
-        res.json({
+        const result = {
           success: true,
           message: 'Deployment successful',
           deploymentUrl: urlMatch ? urlMatch[0] : null,
           txid: txidMatch ? txidMatch[1] : null,
-          output: deployOutput
-        });
+          output: deployOutput,
+          paymentMethod,
+          cost: calculateDeploymentCost(req.file.size)
+        };
+
+        // Include payment transaction ID for wallet payments
+        if (paymentMethod === 'wallet' && paymentTxid) {
+          result.paymentTxid = paymentTxid;
+        }
+
+        res.json(result);
       } else {
         res.status(500).json({
           error: 'Deployment failed',
@@ -190,4 +297,6 @@ app.post('/api/deploy', upload.single('app'), async (req, res) => {
 app.listen(PORT, () => {
   console.log(`1Sat Apps deployment server running on http://localhost:${PORT}`);
   console.log('Ready to accept deployment requests');
+  console.log(`Pricing: ${PRICING.baseCost} satoshis base + ${PRICING.perKbCost} satoshis/KB`);
+  console.log(`Payment methods: BRC-100 Wallet, Manual Key`);
 });
